@@ -1,0 +1,45 @@
+# ==========================
+# Entornos virtuales
+# ==========================
+.venv/
+venv/
+env/
+
+# ==========================
+# Bytecode / cache de Python
+# ==========================
+__pycache__/
+*.py[cod]
+*$py.class
+
+# ==========================
+# Variables de entorno / secretos
+# (el .env real nunca se sube; .env.example sí queda como plantilla)
+# ==========================
+.env
+
+# ==========================
+# Logs (se regeneran en cada corrida del ETL)
+# ==========================
+logs/*.log
+
+# ==========================
+# Jupyter
+# ==========================
+.ipynb_checkpoints/
+
+# ==========================
+# Carpeta temporal de limpieza (ver README)
+# ==========================
+_to_delete/
+
+# ==========================
+# Sistema operativo
+# ==========================
+.DS_Store
+Thumbs.db
+
+# ==========================
+# IDE
+# ==========================
+.vscode/
