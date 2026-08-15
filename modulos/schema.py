@@ -2,8 +2,8 @@
 modulos/schema.py
 
 Esquema esperado del dataset de ventas ya transformado (Pandera).
-Separado de validacion.py para que el esquema se pueda importar solo
-(por ejemplo, desde el notebook de pruebas) sin arrastrar la lógica de validación.
+Separado de validacion.py para que el esquema se pueda importar solo 
+sin arrastrar la lógica de validación.
 """
 
 from pandera.pandas import Column, Check, DataFrameSchema

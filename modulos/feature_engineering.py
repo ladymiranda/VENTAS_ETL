@@ -1,12 +1,3 @@
-"""
-modulos/feature_engineering.py
-
-Enriquecimiento del dataset de ventas ya validado: historial por cliente,
-recencia relativa, participación/ranking por producto y segmentación de
-clientes por valor. Mismas técnicas que se prototiparon en Pruebas.ipynb,
-adaptadas a Polars para que corran dentro del pipeline de producción.
-"""
-
 import polars as pl
 
 

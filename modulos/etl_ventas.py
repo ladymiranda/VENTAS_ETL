@@ -1,11 +1,3 @@
-"""
-modulos/etl_ventas.py
-
-Extracción y limpieza de la fuente de ventas (CSV). Un módulo por fuente de
-datos, igual que etl_bbva.py / etl_bcp.py en proyectos con varias fuentes —
-en VentasApp por ahora solo hay una: el CSV de ventas.
-"""
-
 import polars as pl
 
 
@@ -16,12 +8,12 @@ def extract_csv(file_path):
 
 
 def clean_dataframe(df):
-    # -- LIMPIAR CUSTOMER --------------------------------------------------
+    # LIMPIAR CUSTOMER
     df = df.with_columns(
         pl.col("Customer").str.extract(r"(\d+)").cast(pl.Int64).alias("Cliente_ID")
     )
 
-    # -- TRANSFORMAR PRODUCTOS ----------------------------------------------
+    # TRANSFORMAR PRODUCTOS
     productos = {
         "Product A": "Laptop",
         "Product B": "Smartphone",

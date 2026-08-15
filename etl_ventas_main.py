@@ -41,18 +41,14 @@ def main():
     print("INICIO DEL PROCESO ETL")
     print("=" * 50)
 
-    # ==========================
-    # 1. EXTRAER + LIMPIAR
-    # ==========================
+#   1. EXTRAER + LIMPIAR
     print("Extrayendo y transformando datos...")
 
     df = extraer_y_limpiar(CSV_PATH)
 
     print(f"Registros extraídos: {df.height}")
 
-    # ==========================
-    # 2. VALIDAR
-    # ==========================
+#   2. VALIDAR
     print("Validando datos...")
 
     registros_antes = df.height
@@ -65,16 +61,13 @@ def main():
 
     print(f"Validación completa. Rechazados: {registros_antes - df.height} | Registros válidos: {df.height}")
 
-    # ==========================
-    # 3. FEATURE ENGINEERING
-    # ==========================
+#   3. FEATURE ENGINEERING
     print("Generando features adicionales...")
 
     df = enriquecer_features(df)
 
-    # ==========================
-    # 4. GUARDAR (OUTPUT)
-    # ==========================
+
+#   4. GUARDAR (OUTPUT)
     print("Guardando Parquet...")
 
     guardar_parquet(df, PARQUET_PATH)
