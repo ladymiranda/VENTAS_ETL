@@ -16,9 +16,8 @@ from utils.logging_utils import configurar_logging
 
 CSV_PATH = RAW_DIR / "Base de datos de Ventas.csv"
 
-
 def guardar_parquet(df, path):
-    df.write_parquet(path)
+    df.to_parquet(path, index=False)
     print("Parquet generado correctamente.")
 
 
@@ -46,12 +45,12 @@ def main():
 
     df = extraer_y_limpiar(CSV_PATH)
 
-    print(f"Registros extraídos: {df.height}")
+    print(f"Registros extraídos: {len(df)}")
 
 #   2. VALIDAR
     print("Validando datos...")
 
-    registros_antes = df.height
+    registros_antes = len(df)
     df, resumen_rechazos = validate_dataframe(df)
 
     if resumen_rechazos:
@@ -59,7 +58,7 @@ def main():
         for regla, cantidad in resumen_rechazos.items():
             print(f"  - {regla}: {cantidad} registros")
 
-    print(f"Validación completa. Rechazados: {registros_antes - df.height} | Registros válidos: {df.height}")
+    print(f"Validación completa. Rechazados: {registros_antes - len(df)} | Registros válidos: {len(df)}")
 
 #   3. FEATURE ENGINEERING
     print("Generando features adicionales...")
@@ -69,11 +68,9 @@ def main():
 
 #   4. GUARDAR (OUTPUT)
     print("Guardando Parquet...")
-
     guardar_parquet(df, PARQUET_PATH)
-
+    
     print("Guardando en DuckDB...")
-
     guardar_duckdb(df, DB_PATH)
 
     print("=" * 50)

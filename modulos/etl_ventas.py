@@ -1,16 +1,18 @@
-import polars as pl
+import pandas as pd
 
 
 def extract_csv(file_path):
     print(">>> Entró a extract_csv")
-    df = pl.read_csv(file_path)
+    df = pd.read_csv(file_path)
     return df
 
 
 def clean_dataframe(df):
     # LIMPIAR CUSTOMER
-    df = df.with_columns(
-        pl.col("Customer").str.extract(r"(\d+)").cast(pl.Int64).alias("Cliente_ID")
+    df["Cliente_ID"] = (
+        df["Customer"]
+        .astype(str)
+        .str.extract(r"(\d+)", expand=False)
     )
 
     # TRANSFORMAR PRODUCTOS
@@ -21,18 +23,29 @@ def clean_dataframe(df):
         "Product D": "Monitor",
         "Product E": "Teclado",
     }
-    df = df.with_columns(pl.col("Product").replace(productos).alias("Producto"))
 
-    # -- TRANSFORMAR MESES ---------------------------------------------------
+    df["Producto"] = df["Product"].replace(productos)
+
+    # TRANSFORMAR MESES
     meses = {
-        "Jan": "Enero", "Feb": "Febrero", "Mar": "Marzo", "Apr": "Abril",
-        "May": "Mayo", "Jun": "Junio", "Jul": "Julio", "Aug": "Agosto",
-        "Sep": "Septiembre", "Oct": "Octubre", "Nov": "Noviembre", "Dec": "Diciembre",
+        "Jan": "Enero",
+        "Feb": "Febrero",
+        "Mar": "Marzo",
+        "Apr": "Abril",
+        "May": "Mayo",
+        "Jun": "Junio",
+        "Jul": "Julio",
+        "Aug": "Agosto",
+        "Sep": "Septiembre",
+        "Oct": "Octubre",
+        "Nov": "Noviembre",
+        "Dec": "Diciembre",
     }
-    df = df.with_columns(pl.col("Month").replace(meses).alias("Mes"))
 
-    # -- RENOMBRAR COLUMNAS ---------------------------------------------------
-    df = df.rename({
+    df["Mes"] = df["Month"].replace(meses)
+
+    # RENOMBRAR COLUMNAS
+    df = df.rename(columns={
         "Year": "Año",
         "Units_Sold": "Unidades_Vendidas",
         "Price_per_Unit": "Precio_Unitario",
@@ -40,14 +53,15 @@ def clean_dataframe(df):
         "Customer_Name": "Nombre_Cliente",
     })
 
-    # -- NORMALIZAR DECIMALES ---------------------------------------------------
-    df = df.with_columns([
-        pl.col("Precio_Unitario").round(2),
-        pl.col("Ingresos").round(2),
-    ])
+    # NORMALIZAR DECIMALES
+    df["Precio_Unitario"] = df["Precio_Unitario"].round(2)
+    df["Ingresos"] = df["Ingresos"].round(2)
 
-    # -- ELIMINAR COLUMNAS ANTIGUAS ---------------------------------------------
-    df = df.drop(["Customer", "Product", "Month"], strict=False)
+    # ELIMINAR COLUMNAS ANTIGUAS
+    df = df.drop(
+        columns=["Customer", "Product", "Month"],
+        errors="ignore"
+    )
 
     return df
 

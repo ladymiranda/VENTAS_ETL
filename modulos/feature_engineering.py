@@ -1,72 +1,123 @@
-import polars as pl
-
+import pandas as pd
 
 ORDEN_MESES = {
-    "Enero": 1, "Febrero": 2, "Marzo": 3, "Abril": 4, "Mayo": 5, "Junio": 6,
-    "Julio": 7, "Agosto": 8, "Septiembre": 9, "Octubre": 10, "Noviembre": 11, "Diciembre": 12,
+    "Enero": 1,
+    "Febrero": 2,
+    "Marzo": 3,
+    "Abril": 4,
+    "Mayo": 5,
+    "Junio": 6,
+    "Julio": 7,
+    "Agosto": 8,
+    "Septiembre": 9,
+    "Octubre": 10,
+    "Noviembre": 11,
+    "Diciembre": 12,
 }
 
+def historial_por_cliente(df: pd.DataFrame) -> pd.DataFrame:
 
-def historial_por_cliente(df: pl.DataFrame) -> pl.DataFrame:
-    """Técnica 1: total de compras, unidades, monto total, ticket promedio y monto máximo por cliente."""
-    historial = df.group_by("Cliente_ID").agg([
-        pl.len().alias("total_compras"),
-        pl.col("Unidades_Vendidas").sum().alias("unidades_totales"),
-        pl.col("Ingresos").sum().round(2).alias("monto_total"),
-        pl.col("Ingresos").mean().round(2).alias("ticket_promedio"),
-        pl.col("Ingresos").max().alias("monto_max"),
-    ])
-    return df.join(historial, on="Cliente_ID", how="left")
-
-
-def recencia_por_cliente(df: pl.DataFrame) -> pl.DataFrame:
-    """Técnica 2: meses desde la última compra de cada cliente (no hay fecha exacta, solo Año/Mes)."""
-    df = df.with_columns(
-        (pl.col("Año") * 12 + pl.col("Mes").replace_strict(ORDEN_MESES, return_dtype=pl.Int64))
-        .alias("periodo")
+    historial = (
+        df.groupby("Cliente_ID")
+        .agg(
+            total_compras=("Cliente_ID", "size"),
+            unidades_totales=("Unidades_Vendidas", "sum"),
+            monto_total=("Ingresos", "sum"),
+            ticket_promedio=("Ingresos", "mean"),
+            monto_max=("Ingresos", "max"),
+        )
+        .reset_index()
     )
+
+    historial["monto_total"] = historial["monto_total"].round(2)
+    historial["ticket_promedio"] = historial["ticket_promedio"].round(2)
+
+    return df.merge(historial, on="Cliente_ID", how="left")
+
+
+def recencia_por_cliente(df: pd.DataFrame) -> pd.DataFrame:
+
+    df = df.copy()
+
+    df["Mes_Numero"] = df["Mes"].map(ORDEN_MESES)
+
+    df["periodo"] = df["Año"] * 12 + df["Mes_Numero"]
+
     periodo_actual = df["periodo"].max()
 
     recencia = (
-        df.group_by("Cliente_ID")
-        .agg(pl.col("periodo").max().alias("ultimo_periodo_compra"))
-        .with_columns((periodo_actual - pl.col("ultimo_periodo_compra")).alias("meses_desde_ultima_compra"))
+        df.groupby("Cliente_ID")["periodo"]
+        .max()
+        .reset_index(name="ultimo_periodo_compra")
     )
-    return df.join(recencia, on="Cliente_ID", how="left")
+
+    recencia["meses_desde_ultima_compra"] = (
+        periodo_actual - recencia["ultimo_periodo_compra"]
+    )
+
+    df = df.merge(recencia, on="Cliente_ID", how="left")
+
+    df = df.drop(columns=["Mes_Numero"])
+
+    return df
 
 
-def participacion_por_producto(df: pl.DataFrame) -> pl.DataFrame:
-    """Técnica 3: cuánto pesa cada producto en el revenue total y su ranking."""
-    resumen = df.group_by("Producto").agg(pl.col("Ingresos").sum().alias("revenue_producto"))
+def participacion_por_producto(df: pd.DataFrame) -> pd.DataFrame:
+
+    resumen = (
+        df.groupby("Producto", as_index=False)["Ingresos"]
+        .sum()
+        .rename(columns={"Ingresos": "revenue_producto"})
+    )
+
     revenue_total = resumen["revenue_producto"].sum()
 
-    resumen = resumen.with_columns([
-        (pl.col("revenue_producto") / revenue_total * 100).round(2).alias("participacion_pct"),
-        pl.col("revenue_producto").rank(method="ordinal", descending=True).cast(pl.Int64).alias("ranking_producto"),
-    ])
-    return df.join(resumen, on="Producto", how="left")
+    resumen["participacion_pct"] = (
+        resumen["revenue_producto"] / revenue_total * 100
+    ).round(2)
 
-
-def segmentar_clientes_por_valor(df: pl.DataFrame) -> pl.DataFrame:
-    """Técnica 4 (bonus): cuartiles de valor por cliente (Bajo/Medio-bajo/Medio-alto/Alto)."""
-    historial_unico = df.select(["Cliente_ID", "monto_total"]).unique(subset="Cliente_ID")
-
-    historial_unico = historial_unico.with_columns(
-        pl.col("monto_total")
-        .qcut(4, labels=["Bajo", "Medio-bajo", "Medio-alto", "Alto"])
-        .cast(pl.Utf8)  # evita guardar como categórico (rompe pd.read_parquet directo por dict-encoding)
-        .alias("segmento_valor")
+    resumen["ranking_producto"] = (
+        resumen["revenue_producto"]
+        .rank(method="min", ascending=False)
+        .astype(int)
     )
-    return df.join(historial_unico.select(["Cliente_ID", "segmento_valor"]), on="Cliente_ID", how="left")
+
+    return df.merge(resumen, on="Producto", how="left")
 
 
-def enriquecer_features(df: pl.DataFrame) -> pl.DataFrame:
-    """Aplica las 4 técnicas en orden y devuelve el DataFrame enriquecido."""
+def segmentar_clientes_por_valor(df: pd.DataFrame) -> pd.DataFrame:
+
+    historial_unico = (
+        df[["Cliente_ID", "monto_total"]]
+        .drop_duplicates(subset="Cliente_ID")
+        .copy()
+    )
+
+    historial_unico["segmento_valor"] = pd.qcut(
+        historial_unico["monto_total"],
+        q=4,
+        labels=["Bajo", "Medio-bajo", "Medio-alto", "Alto"],
+        duplicates="drop",
+    )
+
+    historial_unico["segmento_valor"] = (
+        historial_unico["segmento_valor"].astype(str)
+    )
+
+    return df.merge(
+        historial_unico[["Cliente_ID", "segmento_valor"]],
+        on="Cliente_ID",
+        how="left",
+    )
+
+
+def enriquecer_features(df: pd.DataFrame) -> pd.DataFrame:
+
     df = historial_por_cliente(df)
     df = recencia_por_cliente(df)
     df = participacion_por_producto(df)
     df = segmentar_clientes_por_valor(df)
-    return df
 
+    return df
 
 print(">>> feature_engineering.py cargado")
